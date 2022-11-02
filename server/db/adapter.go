@@ -77,17 +77,17 @@ type Adapter interface {
 	// Authentication management for the basic authentication scheme
 
 	// AuthGetUniqueRecord returns authentication record for a given unique value i.e. login.
-	AuthGetUniqueRecord(unique string) (t.Uid, auth.Level, []byte, time.Time, error)
+	AuthGetUniqueRecord(unique string) (t.Uid, auth.Level, time.Time, error)
 	// AuthGetRecord returns authentication record given user ID and method.
-	AuthGetRecord(user t.Uid, scheme string) (string, auth.Level, []byte, time.Time, error)
+	AuthGetRecord(user t.Uid, scheme string) (string, auth.Level, time.Time, error)
 	// AuthAddRecord creates new authentication record
-	AuthAddRecord(user t.Uid, scheme, unique string, authLvl auth.Level, secret []byte, expires time.Time) error
+	AuthAddRecord(user t.Uid, scheme, unique string, authLvl auth.Level, expires time.Time) error
 	// AuthDelScheme deletes an existing authentication scheme for the user.
 	AuthDelScheme(user t.Uid, scheme string) error
 	// AuthDelAllRecords deletes all records of a given user.
 	AuthDelAllRecords(uid t.Uid) (int, error)
 	// AuthUpdRecord modifies an authentication record. Only non-default/non-zero values are updated.
-	AuthUpdRecord(user t.Uid, scheme, unique string, authLvl auth.Level, secret []byte, expires time.Time) error
+	AuthUpdRecord(user t.Uid, scheme, unique string, authLvl auth.Level, expires time.Time) error
 
 	// Topic management
 

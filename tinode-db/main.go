@@ -269,7 +269,7 @@ func main() {
 			log.Fatalln("Must specify user's authentication scheme to update level")
 		}
 		adapter := store.Store.GetAdapter()
-		if err := adapter.AuthUpdRecord(userId, *scheme, "", level, nil, time.Time{}); err != nil {
+		if err := adapter.AuthUpdRecord(userId, *scheme, "", level, time.Time{}); err != nil {
 			log.Fatalln("Failed to update user's auth level:", err)
 		}
 		log.Printf("User's %s level set to %s for scheme %s.", *uid, level.String(), *scheme)

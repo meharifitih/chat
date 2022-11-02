@@ -20,6 +20,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/reflection"
 )
 
 type grpcNodeServer struct {
@@ -179,6 +180,8 @@ func serveGrpc(addr string, kaEnabled bool, tlsConf *tls.Config) (*grpc.Server, 
 	srv := grpc.NewServer(opts...)
 	pbx.RegisterNodeServer(srv, &grpcNodeServer{})
 	logs.Info.Printf("gRPC/%s%s server is registered at [%s]", grpc.Version, secure, addr)
+
+	reflection.Register(srv)
 
 	go func() {
 		if err := srv.Serve(lis); err != nil {

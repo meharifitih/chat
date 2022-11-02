@@ -372,7 +372,6 @@ func (a *adapter) CreateDb(reset bool) error {
 			userid  BIGINT NOT NULL,
 			scheme  VARCHAR(16) NOT NULL,
 			authlvl INT NOT NULL,
-			secret  VARCHAR(255) NOT NULL,
 			expires DATETIME,
 			PRIMARY KEY(id),
 			FOREIGN KEY(userid) REFERENCES users(id),
@@ -835,8 +834,7 @@ func (a *adapter) UserCreate(user *t.User) error {
 }
 
 // Add user's authentication record
-func (a *adapter) AuthAddRecord(uid t.Uid, scheme, unique string, authLvl auth.Level,
-	secret []byte, expires time.Time) error {
+func (a *adapter) AuthAddRecord(uid t.Uid, scheme, unique string, authLvl auth.Level, expires time.Time) error {
 
 	var exp *time.Time
 	if !expires.IsZero() {
@@ -846,8 +844,8 @@ func (a *adapter) AuthAddRecord(uid t.Uid, scheme, unique string, authLvl auth.L
 	if cancel != nil {
 		defer cancel()
 	}
-	_, err := a.db.ExecContext(ctx, "INSERT INTO auth(uname,userid,scheme,authLvl,secret,expires) VALUES(?,?,?,?,?,?)",
-		unique, store.DecodeUid(uid), scheme, authLvl, secret, exp)
+	_, err := a.db.ExecContext(ctx, "INSERT INTO auth(uname,userid,scheme,authLvl,expires) VALUES(?,?,?,?,?)",
+		unique, store.DecodeUid(uid), scheme, authLvl, exp)
 	if err != nil {
 		if isDupe(err) {
 			return t.ErrDuplicate
@@ -884,7 +882,7 @@ func (a *adapter) AuthDelAllRecords(user t.Uid) (int, error) {
 
 // Update user's authentication unique, secret, auth level.
 func (a *adapter) AuthUpdRecord(uid t.Uid, scheme, unique string, authLvl auth.Level,
-	secret []byte, expires time.Time) error {
+	expires time.Time) error {
 
 	params := []string{"authLvl=?"}
 	args := []interface{}{authLvl}
@@ -893,10 +891,10 @@ func (a *adapter) AuthUpdRecord(uid t.Uid, scheme, unique string, authLvl auth.L
 		params = append(params, "uname=?")
 		args = append(args, unique)
 	}
-	if len(secret) > 0 {
-		params = append(params, "secret=?")
-		args = append(args, secret)
-	}
+	// if len(secret) > 0 {
+	// 	params = append(params, "secret=?")
+	// 	args = append(args, secret)
+	// }
 	if !expires.IsZero() {
 		params = append(params, "expires=?")
 		args = append(args, expires)
@@ -921,13 +919,12 @@ func (a *adapter) AuthUpdRecord(uid t.Uid, scheme, unique string, authLvl auth.L
 }
 
 // Retrieve user's authentication record
-func (a *adapter) AuthGetRecord(uid t.Uid, scheme string) (string, auth.Level, []byte, time.Time, error) {
+func (a *adapter) AuthGetRecord(uid t.Uid, scheme string) (string, auth.Level, time.Time, error) {
 	var expires time.Time
 
 	var record struct {
 		Uname   string
 		Authlvl auth.Level
-		Secret  []byte
 		Expires *time.Time
 	}
 
@@ -935,30 +932,29 @@ func (a *adapter) AuthGetRecord(uid t.Uid, scheme string) (string, auth.Level, [
 	if cancel != nil {
 		defer cancel()
 	}
-	if err := a.db.GetContext(ctx, &record, "SELECT uname,secret,expires,authlvl FROM auth WHERE userid=? AND scheme=?",
+	if err := a.db.GetContext(ctx, &record, "SELECT uname,expires,authlvl FROM auth WHERE userid=? AND scheme=?",
 		store.DecodeUid(uid), scheme); err != nil {
 		if err == sql.ErrNoRows {
 			// Nothing found - use standard error.
 			err = t.ErrNotFound
 		}
-		return "", 0, nil, expires, err
+		return "", 0, expires, err
 	}
 
 	if record.Expires != nil {
 		expires = *record.Expires
 	}
 
-	return record.Uname, record.Authlvl, record.Secret, expires, nil
+	return record.Uname, record.Authlvl, expires, nil
 }
 
 // Retrieve user's authentication record
-func (a *adapter) AuthGetUniqueRecord(unique string) (t.Uid, auth.Level, []byte, time.Time, error) {
+func (a *adapter) AuthGetUniqueRecord(unique string) (t.Uid, auth.Level, time.Time, error) {
 	var expires time.Time
 
 	var record struct {
 		Userid  int64
 		Authlvl auth.Level
-		Secret  []byte
 		Expires *time.Time
 	}
 
@@ -966,19 +962,19 @@ func (a *adapter) AuthGetUniqueRecord(unique string) (t.Uid, auth.Level, []byte,
 	if cancel != nil {
 		defer cancel()
 	}
-	if err := a.db.GetContext(ctx, &record, "SELECT userid,secret,expires,authlvl FROM auth WHERE uname=?", unique); err != nil {
+	if err := a.db.GetContext(ctx, &record, "SELECT userid,expires,authlvl FROM auth WHERE uname=?", unique); err != nil {
 		if err == sql.ErrNoRows {
 			// Nothing found - clear the error
 			err = nil
 		}
-		return t.ZeroUid, 0, nil, expires, err
+		return t.ZeroUid, 0, expires, err
 	}
 
 	if record.Expires != nil {
 		expires = *record.Expires
 	}
 
-	return store.EncodeUid(record.Userid), record.Authlvl, record.Secret, expires, nil
+	return store.EncodeUid(record.Userid), record.Authlvl, expires, nil
 }
 
 // UserGet fetches a single user by user id. If user is not found it returns (nil, nil)

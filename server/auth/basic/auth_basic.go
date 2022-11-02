@@ -4,15 +4,15 @@ package basic
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/tinode/chat/server/auth"
 	"github.com/tinode/chat/server/store"
 	"github.com/tinode/chat/server/store/types"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 // Define default constraints on login and password
@@ -112,23 +112,28 @@ func (a *authenticator) IsInitialized() bool {
 
 // AddRecord adds a basic authentication record to DB.
 func (a *authenticator) AddRecord(rec *auth.Rec, secret []byte, remoteAddr string) (*auth.Rec, error) {
-	uname, password, err := parseSecret(secret)
+	phone, _, err := parseSecret(secret)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = a.checkLoginPolicy(uname); err != nil {
-		return nil, err
-	}
+	// num := phonenumber.Parse(phone, "ET")
+	// if num == "" {
+	// 	log.Println("incorrect phone number format")
+	// }
 
-	if err = a.checkPasswordPolicy(password); err != nil {
-		return nil, err
-	}
+	// if err = a.checkLoginPolicy(uname); err != nil {
+	// 	return nil, err
+	// }
 
-	passhash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, err
-	}
+	// if err = a.checkPasswordPolicy(password); err != nil {
+	// 	return nil, err
+	// }
+
+	// passhash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	// if err != nil {
+	// 	return nil, err
+	// }
 	var expires time.Time
 	if rec.Lifetime > 0 {
 		expires = time.Now().Add(time.Duration(rec.Lifetime)).UTC().Round(time.Millisecond)
@@ -139,14 +144,14 @@ func (a *authenticator) AddRecord(rec *auth.Rec, secret []byte, remoteAddr strin
 		authLevel = auth.LevelAuth
 	}
 
-	err = store.Users.AddAuthRecord(rec.Uid, authLevel, a.name, uname, passhash, expires)
+	err = store.Users.AddAuthRecord(rec.Uid, authLevel, a.name, phone, expires)
 	if err != nil {
 		return nil, err
 	}
 
 	rec.AuthLevel = authLevel
 	if a.addToTags {
-		rec.Tags = append(rec.Tags, a.name+":"+uname)
+		rec.Tags = append(rec.Tags, a.name+":"+phone)
 	}
 	return rec, nil
 }
@@ -158,7 +163,7 @@ func (a *authenticator) UpdateRecord(rec *auth.Rec, secret []byte, remoteAddr st
 		return nil, err
 	}
 
-	login, authLevel, _, _, err := store.Users.GetAuthRecord(rec.Uid, a.name)
+	login, authLevel, _, err := store.Users.GetAuthRecord(rec.Uid, a.name)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +177,7 @@ func (a *authenticator) UpdateRecord(rec *auth.Rec, secret []byte, remoteAddr st
 		uname = login
 	} else if err = a.checkLoginPolicy(uname); err != nil {
 		return nil, err
-	} else if uid, _, _, _, err := store.Users.GetAuthUniqueRecord(a.name, uname); err != nil {
+	} else if uid, _, _, err := store.Users.GetAuthUniqueRecord(a.name, uname); err != nil {
 		return nil, err
 	} else if !uid.IsZero() {
 		// The (new) user name already exists. Report an error.
@@ -183,15 +188,15 @@ func (a *authenticator) UpdateRecord(rec *auth.Rec, secret []byte, remoteAddr st
 		return nil, err
 	}
 
-	passhash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, types.ErrInternal
-	}
+	// passhash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	// if err != nil {
+	// 	return nil, types.ErrInternal
+	// }
 	var expires time.Time
 	if rec.Lifetime > 0 {
 		expires = types.TimeNow().Add(time.Duration(rec.Lifetime))
 	}
-	err = store.Users.UpdateAuthRecord(rec.Uid, authLevel, a.name, uname, passhash, expires)
+	err = store.Users.UpdateAuthRecord(rec.Uid, authLevel, a.name, uname, expires)
 	if err != nil {
 		return nil, err
 	}
@@ -214,12 +219,39 @@ func (a *authenticator) UpdateRecord(rec *auth.Rec, secret []byte, remoteAddr st
 
 // Authenticate checks login and password.
 func (a *authenticator) Authenticate(secret []byte, remoteAddr string) (*auth.Rec, []byte, error) {
-	uname, password, err := parseSecret(secret)
-	if err != nil {
-		return nil, nil, err
+	// uname, _, err := parseSecret(secret)
+	// ***
+
+	token := strings.Split(string(secret), ":")
+	log.Printf("the token after parsing jwt is %s", token[0])
+	var claims jwt.MapClaims
+	tkn, _ := jwt.Parse(token[0], nil)
+
+	if tkn != nil {
+		var ok bool
+		if claims, ok = tkn.Claims.(jwt.MapClaims); !ok {
+			log.Println("error while parsing jwt claims")
+			return nil, nil, errors.New("error while parsing jwt claims")
+		}
 	}
 
-	uid, authLvl, passhash, expires, err := store.Users.GetAuthUniqueRecord(a.name, uname)
+	if claims["phone"] == nil {
+		log.Println("error while parsing phone")
+		return nil, nil, errors.New("error while parsing phone")
+	}
+	phone := claims["phone"].(string)
+	if phone == "" {
+		log.Println("error while parsing phone")
+		return nil, nil, errors.New("error while parsing phone")
+	}
+	log.Printf("the phone after parsing jwt is %s", phone)
+
+	//****
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
+
+	uid, authLvl, expires, err := store.Users.GetAuthUniqueRecord(a.name, phone)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -232,11 +264,11 @@ func (a *authenticator) Authenticate(secret []byte, remoteAddr string) (*auth.Re
 		return nil, nil, types.ErrExpired
 	}
 
-	err = bcrypt.CompareHashAndPassword(passhash, []byte(password))
-	if err != nil {
-		// Invalid password
-		return nil, nil, types.ErrFailed
-	}
+	// err = bcrypt.CompareHashAndPassword(passhash, []byte(password))
+	// if err != nil {
+	// 	// Invalid password
+	// 	return nil, nil, types.ErrFailed
+	// }
 
 	var lifetime time.Duration
 	if !expires.IsZero() {
@@ -274,7 +306,7 @@ func (a *authenticator) IsUnique(secret []byte, remoteAddr string) (bool, error)
 		return false, err
 	}
 
-	uid, _, _, _, err := store.Users.GetAuthUniqueRecord(a.name, uname)
+	uid, _, _, err := store.Users.GetAuthUniqueRecord(a.name, uname)
 	if err != nil {
 		return false, err
 	}
@@ -306,7 +338,7 @@ func (a *authenticator) RestrictedTags() ([]string, error) {
 
 // GetResetParams returns authenticator parameters passed to password reset handler.
 func (a *authenticator) GetResetParams(uid types.Uid) (map[string]interface{}, error) {
-	login, _, _, _, err := store.Users.GetAuthRecord(uid, a.name)
+	login, _, _, err := store.Users.GetAuthRecord(uid, a.name)
 	if err != nil {
 		return nil, err
 	}

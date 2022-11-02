@@ -910,6 +910,8 @@ func (s *Session) login(msg *ClientComMessage) {
 			// Log internal errors
 			logs.Warn.Println("s.login: internal", err, s.sid)
 		}
+		resp.Ctrl.Code = 401
+		resp.Ctrl.Text = "Unauthorized"
 		s.queueOut(resp)
 		return
 	}

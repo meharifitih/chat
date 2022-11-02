@@ -251,10 +251,10 @@ func (s storeObj) DbStats() func() interface{} {
 // UsersPersistenceInterface is an interface which defines methods for persistent storage of user records.
 type UsersPersistenceInterface interface {
 	Create(user *types.User, private interface{}) (*types.User, error)
-	GetAuthRecord(user types.Uid, scheme string) (string, auth.Level, []byte, time.Time, error)
-	GetAuthUniqueRecord(scheme, unique string) (types.Uid, auth.Level, []byte, time.Time, error)
-	AddAuthRecord(uid types.Uid, authLvl auth.Level, scheme, unique string, secret []byte, expires time.Time) error
-	UpdateAuthRecord(uid types.Uid, authLvl auth.Level, scheme, unique string, secret []byte, expires time.Time) error
+	GetAuthRecord(user types.Uid, scheme string) (string, auth.Level, time.Time, error)
+	GetAuthUniqueRecord(scheme, unique string) (types.Uid, auth.Level, time.Time, error)
+	AddAuthRecord(uid types.Uid, authLvl auth.Level, scheme, unique string, expires time.Time) error
+	UpdateAuthRecord(uid types.Uid, authLvl auth.Level, scheme, unique string, expires time.Time) error
 	DelAuthRecords(uid types.Uid, scheme string) error
 	Get(uid types.Uid) (*types.User, error)
 	GetAll(uid ...types.Uid) ([]types.User, error)
@@ -327,8 +327,8 @@ func (usersMapper) Create(user *types.User, private interface{}) (*types.User, e
 
 // GetAuthRecord takes a user ID and a authentication scheme name, fetches unique scheme-dependent identifier and
 // authentication secret.
-func (usersMapper) GetAuthRecord(user types.Uid, scheme string) (string, auth.Level, []byte, time.Time, error) {
-	unique, authLvl, secret, expires, err := adp.AuthGetRecord(user, scheme)
+func (usersMapper) GetAuthRecord(user types.Uid, scheme string) (string, auth.Level, time.Time, error) {
+	unique, authLvl, expires, err := adp.AuthGetRecord(user, scheme)
 	if err == nil {
 		parts := strings.Split(unique, ":")
 		if len(parts) > 1 {
@@ -338,27 +338,27 @@ func (usersMapper) GetAuthRecord(user types.Uid, scheme string) (string, auth.Le
 		}
 	}
 
-	return unique, authLvl, secret, expires, err
+	return unique, authLvl, expires, err
 }
 
 // GetAuthUniqueRecord takes a unique identifier and a authentication scheme name, fetches user ID and
 // authentication secret.
-func (usersMapper) GetAuthUniqueRecord(scheme, unique string) (types.Uid, auth.Level, []byte, time.Time, error) {
+func (usersMapper) GetAuthUniqueRecord(scheme, unique string) (types.Uid, auth.Level, time.Time, error) {
 	return adp.AuthGetUniqueRecord(scheme + ":" + unique)
 }
 
 // AddAuthRecord creates a new authentication record for the given user.
-func (usersMapper) AddAuthRecord(uid types.Uid, authLvl auth.Level, scheme, unique string, secret []byte,
+func (usersMapper) AddAuthRecord(uid types.Uid, authLvl auth.Level, scheme, unique string,
 	expires time.Time) error {
 
-	return adp.AuthAddRecord(uid, scheme, scheme+":"+unique, authLvl, secret, expires)
+	return adp.AuthAddRecord(uid, scheme, scheme+":"+unique, authLvl, expires)
 }
 
 // UpdateAuthRecord updates authentication record with a new secret and expiration time.
 func (usersMapper) UpdateAuthRecord(uid types.Uid, authLvl auth.Level, scheme, unique string,
-	secret []byte, expires time.Time) error {
+	expires time.Time) error {
 
-	return adp.AuthUpdRecord(uid, scheme, scheme+":"+unique, authLvl, secret, expires)
+	return adp.AuthUpdRecord(uid, scheme, scheme+":"+unique, authLvl, expires)
 }
 
 // DelAuthRecords deletes user's auth records of the given scheme.
