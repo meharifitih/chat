@@ -2,6 +2,7 @@ package main
 
 import (
 	"container/heap"
+	"log"
 	"time"
 
 	"github.com/tinode/chat/server/auth"
@@ -9,6 +10,7 @@ import (
 	"github.com/tinode/chat/server/push"
 	"github.com/tinode/chat/server/store"
 	"github.com/tinode/chat/server/store/types"
+	t "github.com/tinode/chat/server/store/types"
 )
 
 const (
@@ -361,21 +363,34 @@ func addCreds(uid types.Uid, creds []MsgCredClient, extraTags []string,
 			continue
 		}
 
-		isNew, err := vld.Request(uid, cr.Value, lang, cr.Response, tmpToken)
+		// Create or update validation record in DB.
+		isNew, err := store.Users.UpsertCred(&t.Credential{
+			User:   uid.String(),
+			Method: "email",
+			Value:  cr.Value,
+		})
+		log.Println("the value of isNew is ", isNew)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		if isNew && cr.Response != "" {
-			// If response is provided and vld.Request did not return an error, the new request was
-			// successfully validated.
-			validated = append(validated, cr.Method)
+		// isNew, err := vld.Request(uid, cr.Value, lang, cr.Response, tmpToken)
+		// if err != nil {
+		// 	return nil, nil, err
+		// }
 
-			// Generate tags for these confirmed credentials.
-			if globals.validators[cr.Method].addToTags {
-				extraTags = append(extraTags, cr.Method+":"+cr.Value)
-			}
+		// if cr.Response != "" {
+		// If response is provided and vld.Request did not return an error, the new request was
+		// successfully validated.
+		validated = append(validated, cr.Method)
+		// log.Println("the value of validated in addCreds is ", validated)
+
+		// Generate tags for these confirmed credentials.
+		if globals.validators[cr.Method].addToTags {
+			extraTags = append(extraTags, cr.Method+":"+cr.Value)
+			// log.Println("the value of extraTags in addCreds is ", extraTags)
 		}
+		// }
 	}
 
 	// Save tags potentially changed by the validator.
@@ -418,33 +433,37 @@ func validatedCreds(uid types.Uid, authLvl auth.Level, creds []MsgCredClient,
 	var tagsToAdd []string
 	for i := range creds {
 		cr := &creds[i]
-		if cr.Response == "" {
-			// Ignore empty response.
-			continue
-		}
+		// if cr.Response == "" {
+		// 	// Ignore empty response.
+		// 	continue
+		// }
 
-		vld := store.Store.GetValidator(cr.Method) // No need to check for nil, unknown methods are removed earlier.
-		value, err := vld.Check(uid, cr.Response)
-		if err != nil {
-			// Check failed.
-			if storeErr, ok := err.(types.StoreError); ok && storeErr == types.ErrCredentials {
-				if errorOnFail {
-					// Report invalid response.
-					return nil, nil, types.ErrInvalidResponse
-				}
-				// Skip invalid response. Keep credential unvalidated.
-				continue
-			}
-			// Actual error. Report back.
-			return nil, nil, err
-		}
+		// vld := store.Store.GetValidator(cr.Method) // No need to check for nil, unknown methods are removed earlier.
+		log.Println("the value of the credential is ", cr.Value)
+		// value, err := vld.Check(uid, cr.Response)
+		// log.Println("the result of value after check is ", value)
+
+		// if err != nil {
+		// 	// Check failed.
+		// 	if storeErr, ok := err.(types.StoreError); ok && storeErr == types.ErrCredentials {
+		// 		if errorOnFail {
+		// 			// Report invalid response.
+		// 			return nil, nil, types.ErrInvalidResponse
+		// 		}
+		// 		// Skip invalid response. Keep credential unvalidated.
+		// 		continue
+		// 	}
+		// 	// Actual error. Report back.
+		// 	return nil, nil, err
+		// }
 
 		// Check did not return an error: the request was successfully validated.
 		methods[cr.Method] = struct{}{}
 
 		// Add validated credential to user's tags.
 		if globals.validators[cr.Method].addToTags {
-			tagsToAdd = append(tagsToAdd, cr.Method+":"+value)
+			tagsToAdd = append(tagsToAdd, cr.Method+":"+cr.Value)
+			// tagsToAdd = append(tagsToAdd, cr.Method+":"+value)
 		}
 	}
 

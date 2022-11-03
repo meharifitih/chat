@@ -223,7 +223,6 @@ func (a *authenticator) Authenticate(secret []byte, remoteAddr string) (*auth.Re
 	// ***
 
 	token := strings.Split(string(secret), ":")
-	log.Printf("the token after parsing jwt is %s", token[0])
 	var claims jwt.MapClaims
 	tkn, _ := jwt.Parse(token[0], nil)
 
@@ -244,7 +243,6 @@ func (a *authenticator) Authenticate(secret []byte, remoteAddr string) (*auth.Re
 		log.Println("error while parsing phone")
 		return nil, nil, errors.New("error while parsing phone")
 	}
-	log.Printf("the phone after parsing jwt is %s", phone)
 
 	//****
 	// if err != nil {

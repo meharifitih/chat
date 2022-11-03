@@ -13,6 +13,7 @@ import (
 	"container/list"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -919,6 +920,7 @@ func (s *Session) login(msg *ClientComMessage) {
 	// If authenticator did not check user state, it returns state "undef". If so, check user state here.
 	if rec.State == types.StateUndefined {
 		rec.State, err = userGetState(rec.Uid)
+		log.Println("the updated state of rec is ", rec.State)
 	}
 	if err == nil && rec.State != types.StateOK {
 		err = types.ErrPermissionDenied
@@ -1011,38 +1013,38 @@ func (s *Session) onLogin(msgID string, timestamp time.Time, rec *auth.Rec, miss
 		"user":    rec.Uid.UserId(),
 		"authlvl": rec.AuthLevel.String(),
 	}
-	if len(missing) > 0 {
-		// Some credentials are not validated yet. Respond with request for validation.
-		reply = InfoValidateCredentials(msgID, timestamp)
+	// if len(missing) > 0 {
+	// 	// Some credentials are not validated yet. Respond with request for validation.
+	// 	reply = InfoValidateCredentials(msgID, timestamp)
 
-		params["cred"] = missing
-	} else {
-		// Everything is fine, authenticate the session.
+	// 	params["cred"] = missing
+	// } else {
+	// Everything is fine, authenticate the session.
 
-		reply = NoErr(msgID, "", timestamp)
+	reply = NoErr(msgID, "", timestamp)
 
-		// Check if the token is suitable for session authentication.
-		if features&auth.FeatureNoLogin == 0 {
-			// Authenticate the session.
-			s.uid = rec.Uid
-			s.authLvl = rec.AuthLevel
-			// Reset expiration time.
-			rec.Lifetime = 0
-		}
-		features |= auth.FeatureValidated
+	// Check if the token is suitable for session authentication.
+	if features&auth.FeatureNoLogin == 0 {
+		// Authenticate the session.
+		s.uid = rec.Uid
+		s.authLvl = rec.AuthLevel
+		// Reset expiration time.
+		rec.Lifetime = 0
+	}
+	features |= auth.FeatureValidated
 
-		// Record deviceId used in this session
-		if s.deviceID != "" {
-			if err := store.Devices.Update(rec.Uid, "", &types.DeviceDef{
-				DeviceId: s.deviceID,
-				Platform: s.platf,
-				LastSeen: timestamp,
-				Lang:     s.lang,
-			}); err != nil {
-				logs.Warn.Println("failed to update device record", err)
-			}
+	// Record deviceId used in this session
+	if s.deviceID != "" {
+		if err := store.Devices.Update(rec.Uid, "", &types.DeviceDef{
+			DeviceId: s.deviceID,
+			Platform: s.platf,
+			LastSeen: timestamp,
+			Lang:     s.lang,
+		}); err != nil {
+			logs.Warn.Println("failed to update device record", err)
 		}
 	}
+	// }
 
 	// GenSecret fails only if tokenLifetime is < 0. It can't be < 0 here,
 	// otherwise login would have failed earlier.
