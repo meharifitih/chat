@@ -18,7 +18,7 @@ import (
 
 type Banner struct {
 	Id         uint       `json:"id" gorm:"primaryKey"`
-	BannerName string     `json:"banner_name" `
+	BannerName string     `json:"banner_name" gorm:"unique"`
 	LinkUrl    string     `json:"link_url"`
 	Internal   bool       `json:"internal"`
 	ImgUrl     string     `json:"img_url"`
@@ -191,7 +191,7 @@ func listBanners(wrt http.ResponseWriter, req *http.Request) {
 	page, _ := strconv.Atoi(query.Get("page"))
 
 	if perpage == 0 {
-		perpage = 1
+		perpage = 10
 	}
 
 	if page == 0 {
