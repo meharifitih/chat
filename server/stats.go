@@ -8,11 +8,11 @@ package main
 import (
 	"encoding/json"
 	"expvar"
-	"net/http"
 	"runtime"
 	"sort"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/tinode/chat/server/logs"
 	"github.com/tinode/chat/server/store"
 )
@@ -53,7 +53,8 @@ type varUpdate struct {
 }
 
 // Initialize stats reporting through expvar.
-func statsInit(mux *http.ServeMux, path string) {
+func statsInit(mux *mux.Router, path string) {
+	// func statsInit(mux *http.ServeMux, path string) {
 	if path == "" || path == "-" {
 		return
 	}

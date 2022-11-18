@@ -8,7 +8,6 @@ require (
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/aws/aws-sdk-go v1.44.47
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/dongri/phonenumber v0.0.0-20220808001537-be17ad0b5144
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/go-stack/stack v1.8.1 // indirect
@@ -18,15 +17,18 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.5.8
 	github.com/gorilla/handlers v1.5.1
+	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/klauspost/compress v1.15.7 // indirect
+	github.com/kr/pretty v0.3.0 // indirect
 	github.com/lib/pq v1.10.3 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/nyaruka/phonenumbers v1.1.0
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/prometheus/client_golang v1.12.2
 	github.com/prometheus/common v0.35.0
+	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/sideshow/apns2 v0.23.0
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/tinode/jsonco v1.0.0
@@ -42,6 +44,9 @@ require (
 	google.golang.org/genproto v0.0.0-20220706132729-d86698d07c53 // indirect
 	google.golang.org/grpc v1.47.0
 	google.golang.org/protobuf v1.28.0
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/rethinkdb/rethinkdb-go.v6 v6.2.2
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gorm.io/driver/mysql v1.4.4
+	gorm.io/gorm v1.24.1
 )

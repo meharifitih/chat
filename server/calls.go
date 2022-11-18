@@ -124,7 +124,7 @@ func initVideoCalls(jsconfig json.RawMessage) error {
 	}
 
 	if len(globals.iceServers) == 0 {
-		return errors.New("no valid ICE cervers found")
+		return errors.New("no valid ICE servers found")
 	}
 
 	globals.callEstablishmentTimeout = config.CallEstablishmentTimeout

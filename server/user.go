@@ -3,6 +3,7 @@ package main
 import (
 	"container/heap"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/tinode/chat/server/auth"
@@ -38,6 +39,13 @@ func replyCreateUser(s *Session, msg *ClientComMessage, rec *auth.Rec) {
 		logs.Warn.Println("create user: unknown auth handler", s.sid)
 		return
 	}
+	phone := strings.Trim(string(msg.Acc.Secret), "+")
+	// phone := phonenumber.Parse(string(msg.Acc.Secret), "ET")
+	// if phone == "" {
+	// 	log.Println("incorrect phone number format")
+	// }
+
+	msg.Acc.Secret = []byte(phone)
 
 	// Check if login is unique.
 	if ok, err := authhdl.IsUnique(msg.Acc.Secret, s.remoteAddr); !ok {
@@ -146,16 +154,16 @@ func replyCreateUser(s *Session, msg *ClientComMessage, rec *auth.Rec) {
 
 	// When creating an account, the user must provide all required credentials.
 	// If any are missing, reject the request.
-	if len(creds) < len(globals.authValidators[rec.AuthLevel]) {
-		logs.Warn.Println("create user: missing credentials; have:", creds, "want:",
-			globals.authValidators[rec.AuthLevel], s.sid)
-		// Attempt to delete incomplete user record
-		store.Users.Delete(user.Uid(), false)
-		_, missing := stringSliceDelta(globals.authValidators[rec.AuthLevel], credentialMethods(creds))
-		s.queueOut(decodeStoreError(types.ErrPolicy, msg.Id, "", msg.Timestamp,
-			map[string]interface{}{"creds": missing}))
-		return
-	}
+	// if len(creds) < len(globals.authValidators[rec.AuthLevel]) {
+	// 	logs.Warn.Println("create user: missing credentials; have:", creds, "want:",
+	// 		globals.authValidators[rec.AuthLevel], s.sid)
+	// 	// Attempt to delete incomplete user record
+	// 	store.Users.Delete(user.Uid(), false)
+	// 	_, missing := stringSliceDelta(globals.authValidators[rec.AuthLevel], credentialMethods(creds))
+	// 	s.queueOut(decodeStoreError(types.ErrPolicy, msg.Id, "", msg.Timestamp,
+	// 		map[string]interface{}{"creds": missing}))
+	// 	return
+	// }
 
 	// Save credentials, update tags if necessary.
 	tmpToken, _, _ := store.Store.GetLogicalAuthHandler("token").GenSecret(&auth.Rec{
@@ -164,7 +172,8 @@ func replyCreateUser(s *Session, msg *ClientComMessage, rec *auth.Rec) {
 		Lifetime:  auth.Duration(time.Hour * 24),
 		Features:  auth.FeatureNoLogin,
 	})
-	validated, _, err := addCreds(user.Uid(), creds, rec.Tags, s.lang, tmpToken)
+	var validated []string
+	validated, _, err = addCreds(user.Uid(), creds, rec.Tags, s.lang, tmpToken)
 	if err != nil {
 		// Delete incomplete user record.
 		store.Users.Delete(user.Uid(), false)

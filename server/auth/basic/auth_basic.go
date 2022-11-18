@@ -112,10 +112,10 @@ func (a *authenticator) IsInitialized() bool {
 
 // AddRecord adds a basic authentication record to DB.
 func (a *authenticator) AddRecord(rec *auth.Rec, secret []byte, remoteAddr string) (*auth.Rec, error) {
-	phone, _, err := parseSecret(secret)
-	if err != nil {
-		return nil, err
-	}
+	// phone, _, err := parseSecret(secret)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	// num := phonenumber.Parse(phone, "ET")
 	// if num == "" {
@@ -144,14 +144,14 @@ func (a *authenticator) AddRecord(rec *auth.Rec, secret []byte, remoteAddr strin
 		authLevel = auth.LevelAuth
 	}
 
-	err = store.Users.AddAuthRecord(rec.Uid, authLevel, a.name, phone, expires)
+	err := store.Users.AddAuthRecord(rec.Uid, authLevel, a.name, string(secret), expires)
 	if err != nil {
 		return nil, err
 	}
 
 	rec.AuthLevel = authLevel
 	if a.addToTags {
-		rec.Tags = append(rec.Tags, a.name+":"+phone)
+		rec.Tags = append(rec.Tags, a.name+":"+string(secret))
 	}
 	return rec, nil
 }
@@ -222,27 +222,36 @@ func (a *authenticator) Authenticate(secret []byte, remoteAddr string) (*auth.Re
 	// uname, _, err := parseSecret(secret)
 	// ***
 
-	token := strings.Split(string(secret), ":")
+	// token := strings.Split(string(secret), ":")
 	var claims jwt.MapClaims
-	tkn, _ := jwt.Parse(token[0], nil)
+	// tkn, _ := jwt.Parse(token[0], nil)
+	tkn, _ := jwt.Parse(string(secret), nil)
 
 	if tkn != nil {
 		var ok bool
 		if claims, ok = tkn.Claims.(jwt.MapClaims); !ok {
-			log.Println("error while parsing jwt claims")
-			return nil, nil, errors.New("error while parsing jwt claims")
+			log.Println("error while parsing claims")
+			return nil, nil, errors.New("error while parsing claims")
 		}
 	}
 
-	if claims["phone"] == nil {
+	if claims["phone_number"] == nil {
 		log.Println("error while parsing phone")
 		return nil, nil, errors.New("error while parsing phone")
 	}
-	phone := claims["phone"].(string)
+	phone := claims["phone_number"].(string)
+	log.Println("phone is", phone)
 	if phone == "" {
 		log.Println("error while parsing phone")
 		return nil, nil, errors.New("error while parsing phone")
 	}
+
+	phone = strings.Trim(phone, "+")
+
+	// phone = phonenumber.Parse(string(phone), "ET")
+	// if phone == "" {
+	// 	log.Println("incorrect phone number format")
+	// }
 
 	//****
 	// if err != nil {
@@ -295,16 +304,23 @@ func (a *authenticator) AsTag(token string) string {
 
 // IsUnique checks login uniqueness.
 func (a *authenticator) IsUnique(secret []byte, remoteAddr string) (bool, error) {
-	uname, _, err := parseSecret(secret)
-	if err != nil {
-		return false, err
-	}
+	// uname := strings.Split(string(secret), ":")
+	// uname, _, err := parseSecret(secret)
+	// if err != nil {
+	// 	return false, err
+	// }
 
-	if err := a.checkLoginPolicy(uname); err != nil {
-		return false, err
-	}
+	// log.Println("the secret is ", string(secret))
+	// if err := a.checkLoginPolicy(string(secret)); err != nil {
+	// 	return false, err
+	// }
 
-	uid, _, _, err := store.Users.GetAuthUniqueRecord(a.name, uname)
+	// phone := phonenumber.Parse(string(secret), "ET")
+	// if phone == "" {
+	// 	log.Println("incorrect phone number format")
+	// }
+
+	uid, _, _, err := store.Users.GetAuthUniqueRecord(a.name, string(secret))
 	if err != nil {
 		return false, err
 	}

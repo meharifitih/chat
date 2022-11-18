@@ -22,6 +22,7 @@ import (
 	"time"
 
 	gh "github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 
 	// For stripping comments from JSON config
 	jcr "github.com/tinode/jsonco"
@@ -330,7 +331,8 @@ func main() {
 	}
 
 	// Set up HTTP server. Must use non-default mux because of expvar.
-	mux := http.NewServeMux()
+	// mux := http.NewServeMux()
+	mux := mux.NewRouter()
 
 	// Exposing values for statistics and monitoring.
 	evpath := *expvarPath
@@ -460,11 +462,11 @@ func main() {
 			continue
 		}
 
-		if val := store.Store.GetValidator(name); val == nil {
-			logs.Err.Fatal("Config provided for an unknown validator '" + name + "'")
-		} else if err = val.Init(string(vconf.Config)); err != nil {
-			logs.Err.Fatal("Failed to init validator '"+name+"': ", err)
-		}
+		// if val := store.Store.GetValidator(name); val == nil {
+		// 	logs.Err.Fatal("Config provided for an unknown validator '" + name + "'")
+		// } else if err = val.Init(string(vconf.Config)); err != nil {
+		// 	logs.Err.Fatal("Failed to init validator '"+name+"': ", err)
+		// }
 		if globals.validators == nil {
 			globals.validators = make(map[string]credValidator)
 		}
@@ -555,7 +557,7 @@ func main() {
 	}()
 
 	if err = initVideoCalls(config.WebRTC); err != nil {
-		logs.Err.Fatal("Failed to init video calls: %w", err)
+		logs.Err.Fatal("Failed to init video calls: ", err)
 	}
 
 	// Keep inactive LP sessions for 15 seconds
@@ -663,6 +665,12 @@ func main() {
 		mux.Handle(config.ApiPath+"v0/file/s/", gh.CompressHandler(http.HandlerFunc(largeFileServe)))
 		logs.Info.Println("Large media handling enabled", config.Media.UseHandler)
 	}
+
+	// mux.Handle(config.ApiPath+"v0/banners", http.HandlerFunc(addBanners))
+	mux.HandleFunc(config.ApiPath+"v0/banners", addBanners).Methods("POST")
+	mux.HandleFunc(config.ApiPath+"v0/banners/{name}", getBanner).Methods("GET")
+	mux.HandleFunc(config.ApiPath+"v0/banners/{name}", deleteBanner).Methods("DELETE")
+	mux.HandleFunc(config.ApiPath+"v0/banners", listBanners).Methods("GET")
 
 	if staticMountPoint != "/" {
 		// Serve json-formatted 404 for all other URLs

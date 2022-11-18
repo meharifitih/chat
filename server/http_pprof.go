@@ -11,13 +11,15 @@ import (
 	"runtime/pprof"
 	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/tinode/chat/server/logs"
 )
 
 var pprofHttpRoot string
 
 // Expose debug profiling at the given URL path.
-func servePprof(mux *http.ServeMux, serveAt string) {
+func servePprof(mux *mux.Router, serveAt string) {
+	// func servePprof(mux *http.ServeMux, serveAt string) {
 	if serveAt == "" || serveAt == "-" {
 		return
 	}
