@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/tinode/chat/server/logs"
 	"github.com/tinode/chat/server/media"
@@ -96,7 +97,12 @@ func (fh *fshandler) Upload(fdef *types.FileDef, file io.ReadSeeker) (string, in
 	fname := fdef.Id
 	ext, _ := mime.ExtensionsByType(fdef.MimeType)
 	if len(ext) > 0 {
-		fname += ext[0]
+		if fdef.MimeType == "video/mp4" {
+			fname += ext[3]
+		} else {
+
+			fname += ext[0]
+		}
 	}
 
 	return fh.serveURL + fname, size, nil
@@ -105,7 +111,8 @@ func (fh *fshandler) Upload(fdef *types.FileDef, file io.ReadSeeker) (string, in
 // Download processes request for file download.
 // The returned ReadSeekCloser must be closed after use.
 func (fh *fshandler) Download(url string) (*types.FileDef, media.ReadSeekCloser, error) {
-	fid := fh.GetIdFromUrl(url)
+	fid := types.ParseUid(strings.Split(url, ".")[0])
+
 	if fid.IsZero() {
 		return nil, nil, types.ErrNotFound
 	}

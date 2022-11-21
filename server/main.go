@@ -13,6 +13,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -23,6 +24,8 @@ import (
 
 	gh "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 
 	// For stripping comments from JSON config
 	jcr "github.com/tinode/jsonco"
@@ -119,6 +122,8 @@ const (
 // or to set it to git tag:
 // 		-ldflags "-X main.buildstamp=`git describe --tags`"
 var buildstamp = "undef"
+
+var DB *gorm.DB
 
 // CredValidator holds additional config params for a credential validator.
 type credValidator struct {
@@ -565,6 +570,15 @@ func main() {
 	// The hub (the main message router)
 	globals.hub = newHub()
 
+	db_url := "root:@tcp(localhost:3306)/tinode?parseTime=true"
+	db, err := gorm.Open(mysql.Open(db_url), &gorm.Config{})
+	DB = db
+	if err != nil {
+		log.Println("Unable to connect to db")
+		return
+	}
+	DB.AutoMigrate(&Story{}, &Banner{})
+
 	// Start accepting cluster traffic.
 	if globals.cluster != nil {
 		globals.cluster.start()
@@ -625,6 +639,7 @@ func main() {
 							http.StripPrefix(staticMountPoint,
 								http.FileServer(http.Dir(*staticPath))))))))
 		logs.Info.Printf("Serving static content from '%s' at '%s'", *staticPath, staticMountPoint)
+		// mux.Handle(*staticPath, http.FileServer(http.Dir("./static/")))
 	} else {
 		logs.Info.Println("Static content is disabled")
 	}
@@ -660,17 +675,25 @@ func main() {
 	mux.Handle(config.ApiPath+"v0/channels/lp", gh.CompressHandler(http.HandlerFunc(serveLongPoll)))
 	if config.Media != nil {
 		// Handle uploads of large files.
-		mux.Handle(config.ApiPath+"v0/file/u/", gh.CompressHandler(http.HandlerFunc(largeFileReceive)))
+		mux.Handle(config.ApiPath+"v0/file/u/", gh.CompressHandler(http.HandlerFunc(largeFileReceive))).Methods("POST")
 		// Serve large files.
-		mux.Handle(config.ApiPath+"v0/file/s/", gh.CompressHandler(http.HandlerFunc(largeFileServe)))
+		mux.Handle(config.ApiPath+"v0/file/s/{name}", gh.CompressHandler(http.HandlerFunc(largeFileServe))).Methods("GET")
 		logs.Info.Println("Large media handling enabled", config.Media.UseHandler)
 	}
+	// mux.Handle(config.ApiPath+"v0/file/s/{name}", gh.CompressHandler(http.HandlerFunc(largeFileServe))).Methods("GET")
+	// logs.Info.Println("Large media handling enabled", config.Media.UseHandler)
 
 	// mux.Handle(config.ApiPath+"v0/banners", http.HandlerFunc(addBanners))
 	mux.HandleFunc(config.ApiPath+"v0/banners", addBanners).Methods("POST")
 	mux.HandleFunc(config.ApiPath+"v0/banners/{name}", getBanner).Methods("GET")
 	mux.HandleFunc(config.ApiPath+"v0/banners/{name}", deleteBanner).Methods("DELETE")
 	mux.HandleFunc(config.ApiPath+"v0/banners", listBanners).Methods("GET")
+
+	// user story
+	mux.HandleFunc(config.ApiPath+"v0/story", addStory).Methods("POST")
+	mux.HandleFunc(config.ApiPath+"v0/story", listStory).Methods("GET")
+	mux.HandleFunc(config.ApiPath+"v0/story/{id}", getStory).Methods("GET")
+	mux.HandleFunc(config.ApiPath+"v0/story/{id}", deleteStory).Methods("DELETE")
 
 	if staticMountPoint != "/" {
 		// Serve json-formatted 404 for all other URLs

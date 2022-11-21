@@ -12,8 +12,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/tinode/chat/server/logs"
 	"github.com/tinode/chat/server/store/types"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
 type Banner struct {
@@ -41,14 +39,6 @@ func addBanners(wrt http.ResponseWriter, req *http.Request) {
 		logs.Info.Println("media upload:", msg.Ctrl.Code, msg.Ctrl.Text, "/", err)
 	}
 
-	db_url := "root:@tcp(localhost:3306)/tinode?parseTime=true"
-	db, err := gorm.Open(mysql.Open(db_url), &gorm.Config{})
-	if err != nil {
-		log.Println("Unable to connect to db")
-		return
-	}
-	db.AutoMigrate(&Banner{})
-
 	// Check if this is a POST/PUT/OPTIONS/HEAD request.
 	if req.Method != http.MethodPost {
 		writeHttpResponse(ErrOperationNotAllowed("", "", now), errors.New("method '"+req.Method+"' not allowed"))
@@ -60,7 +50,7 @@ func addBanners(wrt http.ResponseWriter, req *http.Request) {
 	bd, _ := ioutil.ReadAll(req.Body)
 	json.Unmarshal(bd, &banner)
 
-	err = db.Model(&banner).Create(&banner).Error
+	err := DB.Model(&banner).Create(&banner).Error
 	if err != nil {
 		log.Println("unable to create banner")
 		return
@@ -83,14 +73,6 @@ func getBanner(wrt http.ResponseWriter, req *http.Request) {
 		logs.Info.Println("media upload:", msg.Ctrl.Code, msg.Ctrl.Text, "/", err)
 	}
 
-	db_url := "root:@tcp(localhost:3306)/tinode?parseTime=true"
-	db, err := gorm.Open(mysql.Open(db_url), &gorm.Config{})
-	if err != nil {
-		log.Println("Unable to connect to db")
-		return
-	}
-	db.AutoMigrate(&Banner{})
-
 	// Check if this is a GET request.
 	if req.Method != http.MethodGet {
 		writeHttpResponse(ErrOperationNotAllowed("", "", now), errors.New("method '"+req.Method+"' not allowed"))
@@ -103,7 +85,7 @@ func getBanner(wrt http.ResponseWriter, req *http.Request) {
 		BannerName: name,
 	}
 
-	err = db.Model(&banner).Where(&banner).First(&banner).Error
+	err := DB.Model(&banner).Where(&banner).First(&banner).Error
 	if err != nil {
 		log.Println("unable to get banner")
 		return
@@ -126,14 +108,6 @@ func deleteBanner(wrt http.ResponseWriter, req *http.Request) {
 		logs.Info.Println("media upload:", msg.Ctrl.Code, msg.Ctrl.Text, "/", err)
 	}
 
-	db_url := "root:@tcp(localhost:3306)/tinode?parseTime=true"
-	db, err := gorm.Open(mysql.Open(db_url), &gorm.Config{})
-	if err != nil {
-		log.Println("Unable to connect to db")
-		return
-	}
-	db.AutoMigrate(&Banner{})
-
 	// Check if this is a GET request.
 	if req.Method != http.MethodDelete {
 		writeHttpResponse(ErrOperationNotAllowed("", "", now), errors.New("method '"+req.Method+"' not allowed"))
@@ -149,7 +123,7 @@ func deleteBanner(wrt http.ResponseWriter, req *http.Request) {
 		BannerName: name,
 	}
 
-	err = db.Model(&banner).Where(&banner).Unscoped().Delete(&banner).Error
+	err := DB.Model(&banner).Where(&banner).Unscoped().Delete(&banner).Error
 	if err != nil {
 		log.Println("unable to delete banner")
 		return
@@ -172,14 +146,6 @@ func listBanners(wrt http.ResponseWriter, req *http.Request) {
 		logs.Info.Println("media upload:", msg.Ctrl.Code, msg.Ctrl.Text, "/", err)
 	}
 
-	db_url := "root:@tcp(localhost:3306)/tinode?parseTime=true"
-	db, err := gorm.Open(mysql.Open(db_url), &gorm.Config{})
-	if err != nil {
-		log.Println("Unable to connect to db")
-		return
-	}
-	db.AutoMigrate(&Banner{})
-
 	// Check if this is a GET request.
 	if req.Method != http.MethodGet {
 		writeHttpResponse(ErrOperationNotAllowed("", "", now), errors.New("method '"+req.Method+"' not allowed"))
@@ -200,9 +166,11 @@ func listBanners(wrt http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	var banners []Banner
 
-	err = db.Model(&Banner{}).Offset(page - 1).Limit(perpage).Find(&banners).Error
+	err := DB.Model(&Banner{}).Offset(page - 1).Limit(perpage).Find(&banners).Error
 	if err != nil {
 		log.Println("unable to fetch banners")
+		enc.Encode("unable to fetch banners")
+		wrt.WriteHeader(403)
 		return
 	}
 

@@ -1012,6 +1012,7 @@ func (s *Session) onLogin(msgID string, timestamp time.Time, rec *auth.Rec, miss
 	params = map[string]interface{}{
 		"user":    rec.Uid.UserId(),
 		"authlvl": rec.AuthLevel.String(),
+		"user_id": store.DecodeUid(rec.Uid),
 	}
 	// if len(missing) > 0 {
 	// 	// Some credentials are not validated yet. Respond with request for validation.

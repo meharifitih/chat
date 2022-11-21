@@ -13,11 +13,13 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/tinode/chat/server/logs"
 	"github.com/tinode/chat/server/store"
 	"github.com/tinode/chat/server/store/types"
@@ -102,7 +104,11 @@ func largeFileServe(wrt http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fd, rsc, err := mh.Download(req.URL.String())
+	name := mux.Vars(req)["name"]
+	log.Println("the value of name is ", name)
+
+	fd, rsc, err := mh.Download(name)
+	// fd, rsc, err := mh.Download(req.URL.String())
 	if err != nil {
 		writeHttpResponse(decodeStoreError(err, "", "", now, nil), err)
 		return

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgconn"
 	"github.com/tinode/chat/server/logs"
 
 	"github.com/tinode/chat/server/auth"
@@ -246,6 +247,20 @@ func (s storeObj) DbStats() func() interface{} {
 		return nil
 	}
 	return adp.Stats
+}
+
+func GetDbError(err error) error {
+
+	pqe, ok := err.(*pgconn.PgError)
+	if !ok {
+		return nil
+	}
+
+	if pqe.Code == "P0002" {
+		return errors.New("resource not found")
+	}
+
+	return pqe
 }
 
 // UsersPersistenceInterface is an interface which defines methods for persistent storage of user records.
