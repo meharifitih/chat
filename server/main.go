@@ -626,6 +626,12 @@ func main() {
 				staticMountPoint += "/"
 			}
 		}
+
+		fs := http.FileServer(http.Dir(*staticPath))
+		mux.PathPrefix("/umd/").Handler(fs)
+		mux.PathPrefix("/css/").Handler(fs)
+		mux.PathPrefix("/img/").Handler(fs)
+		mux.PathPrefix("/src/").Handler(fs)
 		mux.Handle(staticMountPoint,
 			// Add optional Cache-Control header
 			cacheControlHandler(config.CacheControl,
@@ -639,7 +645,6 @@ func main() {
 							http.StripPrefix(staticMountPoint,
 								http.FileServer(http.Dir(*staticPath))))))))
 		logs.Info.Printf("Serving static content from '%s' at '%s'", *staticPath, staticMountPoint)
-		// mux.Handle(*staticPath, http.FileServer(http.Dir("./static/")))
 	} else {
 		logs.Info.Println("Static content is disabled")
 	}
@@ -699,7 +704,7 @@ func main() {
 	mux.HandleFunc(config.ApiPath+"v0/app", addMiniApp).Methods("POST")
 	mux.HandleFunc(config.ApiPath+"v0/app/{name}", getMiniApp).Methods("GET")
 	mux.HandleFunc(config.ApiPath+"v0/app/{name}", updateMiniApp).Methods("PATCH")
-	mux.HandleFunc(config.ApiPath+"v0/app/{name}", updateMiniApp).Methods("DELETE")
+	mux.HandleFunc(config.ApiPath+"v0/app/{name}", deleteMiniApp).Methods("DELETE")
 
 	if staticMountPoint != "/" {
 		// Serve json-formatted 404 for all other URLs
