@@ -577,7 +577,7 @@ func main() {
 		log.Println("Unable to connect to db")
 		return
 	}
-	DB.AutoMigrate(&Story{}, &Banner{})
+	DB.AutoMigrate(&Story{}, &Banner{}, &MiniApp{})
 
 	// Start accepting cluster traffic.
 	if globals.cluster != nil {
@@ -694,6 +694,12 @@ func main() {
 	mux.HandleFunc(config.ApiPath+"v0/story", listStory).Methods("GET")
 	mux.HandleFunc(config.ApiPath+"v0/story/{id}", getStory).Methods("GET")
 	mux.HandleFunc(config.ApiPath+"v0/story/{id}", deleteStory).Methods("DELETE")
+
+	// mini programs
+	mux.HandleFunc(config.ApiPath+"v0/app", addMiniApp).Methods("POST")
+	mux.HandleFunc(config.ApiPath+"v0/app/{name}", getMiniApp).Methods("GET")
+	mux.HandleFunc(config.ApiPath+"v0/app/{name}", updateMiniApp).Methods("PATCH")
+	mux.HandleFunc(config.ApiPath+"v0/app/{name}", updateMiniApp).Methods("DELETE")
 
 	if staticMountPoint != "/" {
 		// Serve json-formatted 404 for all other URLs
